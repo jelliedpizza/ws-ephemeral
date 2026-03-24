@@ -59,7 +59,6 @@ def run_loop() -> None:
     schedule.run_all()
 
     if not config.ONESHOT:
-        logger.info("Starting 1-minute health check loop")
         while True:
             schedule.run_pending()
             time.sleep(1)

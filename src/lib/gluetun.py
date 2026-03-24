@@ -92,7 +92,7 @@ class GluetunManager:
         try:
             auth = self._get_auth()
             resp = httpx.put(
-                f"{self.base_url}/v1/portforwarded",
+                f"{self.base_url}/v1/portforward",
                 headers=self._get_headers(),
                 json={"ports": [port]},
                 auth=auth,
