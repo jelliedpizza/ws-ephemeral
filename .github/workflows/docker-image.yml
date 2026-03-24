@@ -36,6 +36,7 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/ws-ephemeral
           tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}}
