@@ -9,7 +9,7 @@ on:
 
 jobs:
   publish-to-registry:
-    name: Push Docker image to multiple registries
+    name: Push Docker image to GitHub Container Registry
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -17,12 +17,6 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
@@ -35,9 +29,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/ws-ephemeral
-            ghcr.io/${{ github.repository }}
+          images: ghcr.io/${{ github.repository }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
