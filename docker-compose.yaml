@@ -46,12 +46,14 @@ services:
 
   ws-ephemeral:
     container_name: ws-ephemeral
+    build: .
     image: ws-ephemeral
     network_mode: service:gluetun
     environment:
       # === Windscribe session cookie ===
       - WS_SESSION_COOKIE=${WS_SESSION_COOKIE}
       - WS_DEBUG=False
+      - TZ=${TZ:-UTC}
 
       # === qBittorrent settings ===
       - QBIT_HOST=localhost

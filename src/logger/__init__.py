@@ -4,10 +4,10 @@ Module to setup logging
 import logging.config
 import os
 from string import Template
-
 from yaml import safe_load
+from pathlib import Path
 
-from config import BASE_PATH
+BASE_PATH = Path(__file__).resolve().parent.parent
 
 # logging setup
 DEBUG: bool = bool(os.environ.get("WS_DEBUG"))

@@ -17,6 +17,10 @@ loggers:
     level: $level
     handlers: [console]
     propagate: no
+  httpx:
+    level: WARNING
+  httpcore:
+    level: WARNING
 
 root:
   level: $level

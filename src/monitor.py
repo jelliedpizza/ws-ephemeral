@@ -5,84 +5,57 @@ Monitor that checks health of qBitTorrent and Gluetun VPN container.
 import logging
 from typing import TypedDict
 
-import config
-from lib.gluetun import GluetunManager
-from lib.qbit import QbitManager
+from config import Config
+from clients.gluetun import GluetunManager
+from clients.qbittorrent import QbitManager
 
 
 class HealthStatus(TypedDict):
     """Health check result."""
-
     qbit: bool
     gluetun: bool
 
 
-HEARTBEAT: bool = True
-
-
-def check_qbit() -> bool:
-    """Check if qBitTorrent is accessible.
-
-    Returns:
-        bool: True if qBitTorrent is healthy.
-    """
+async def check_qbit(config: Config) -> bool:
+    """Check if qBitTorrent is accessible."""
     try:
-        qbit = QbitManager(
-            host=config.QBIT_HOST,
-            port=config.QBIT_PORT,
-            username=config.QBIT_USERNAME,
-            password=config.QBIT_PASSWORD,
-        )
-        logging.debug("qBitTorrent heartbeat: OK")
-        return True
-    except Exception as e:
-        logging.error("qBitTorrent health check failed: %s", e)
-        return False
-
-
-def check_gluetun() -> bool:
-    """Check if Gluetun VPN is running and connected.
-
-    Returns:
-        bool: True if Gluetun is healthy (VPN connected).
-    """
-    try:
-        gluetun = GluetunManager(
-            host=config.GLUETUN_HOST,
-            port=config.GLUETUN_PORT,
-            auth_type=config.GLUETUN_AUTH_TYPE,
-            username=config.GLUETUN_USERNAME,
-            password=config.GLUETUN_PASSWORD,
-            api_key=config.GLUETUN_API_KEY,
-        )
-        status = gluetun.get_vpn_status()
-        if status and status.get("status") == "running":
-            logging.debug("Gluetun heartbeat: OK (VPN running)")
+        async with QbitManager(config):
+            logging.debug("qBitTorrent heartbeat: OK")
             return True
-        logging.warning("Gluetun health check: VPN not connected")
-        return False
     except Exception as e:
-        logging.error("Gluetun health check failed: %s", e)
+        logging.error(f"qBitTorrent health check failed: {e}")
         return False
 
 
-def monitor() -> bool:
+async def check_gluetun(config: Config) -> bool:
+    """Check if Gluetun VPN is running and connected."""
+    try:
+        async with GluetunManager(config) as gluetun:
+            status = await gluetun.get_vpn_status()
+            if status and status.get("status") == "running":
+                logging.debug("Gluetun heartbeat: OK (VPN running)")
+                return True
+            logging.warning("Gluetun health check: VPN not connected")
+            return False
+    except Exception as e:
+        logging.error(f"Gluetun health check failed: {e}")
+        return False
+
+
+async def monitor(config: Config) -> bool:
     """Monitor qBitTorrent and Gluetun health.
 
-    Updates the global HEARTBEAT based on both services being healthy.
-    Both qBitTorrent and Gluetun must be healthy for HEARTBEAT to be True.
-
+    Both qBitTorrent and Gluetun must be healthy (if configured).
+    
     Returns:
         bool: True if both services are healthy.
     """
-    global HEARTBEAT
+    qbit_ok = await check_qbit(config)
+    gluetun_ok = await check_gluetun(config)
 
-    qbit_ok = check_qbit()
-    gluetun_ok = check_gluetun()
+    healthy = qbit_ok and gluetun_ok
 
-    HEARTBEAT = qbit_ok and gluetun_ok
-
-    if HEARTBEAT:
+    if healthy:
         logging.debug("All health checks passed")
     else:
         failures = []
@@ -92,4 +65,4 @@ def monitor() -> bool:
             failures.append("Gluetun")
         logging.warning(f"Health check failures: {', '.join(failures)}")
 
-    return HEARTBEAT
+    return healthy

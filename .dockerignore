@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.pytest_cache/
+tests/
+.git/
+.github/
+README.md
+CHANGELOG.md
+LICENSE.md
