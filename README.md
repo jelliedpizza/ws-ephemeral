@@ -100,7 +100,7 @@ docker compose up -d
 
 When running qBittorrent behind Gluetun VPN container, you need to configure Gluetun's control server and pass the port to it.
 
-### Generate API Key (Optional)
+### Generate API Key
 
 To generate an API key for Gluetun authentication:
 
@@ -108,12 +108,47 @@ To generate an API key for Gluetun authentication:
 docker run --rm qmcgaw/gluetun genkey
 ```
 
-### Gluetun Environment Variables
+### Full Stack Setup (Recommended)
 
-Add these to your Gluetun container:
+The project includes a complete docker-compose.yaml that runs Gluetun + qBittorrent + ws-ephemeral together:
 
-- `HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE={"auth":"apikey","apikey":"YOUR_API_KEY"}` - Use API key auth
-- Or `HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE={"auth":"none"}` - No authentication (not recommended for production)
+```bash
+# 1. Create .env file with your credentials
+WS_USERNAME=your_windscribe_email
+WS_PASSWORD=your_windscribe_password
+WS_TOTP=your_totp_code  # optional
+QBIT_USERNAME=your_qbit_username
+QBIT_PASSWORD=your_qbit_password
+GLUETUN_API_KEY=your_generated_api_key
+SERVER_CITIES=Brussels
+TORRENTING_PORT=10412  # optional, defaults to 10412
+
+# 2. Start the stack
+docker compose up -d
+
+# 3. Check logs
+docker logs -f ws-ephemeral
+```
+
+### How It Works
+
+1. **Gluetun** connects to Windscribe VPN and exposes a control server on port 8000
+2. **qBittorrent** runs inside Gluetun's network stack (all traffic goes through VPN)
+3. **ws-ephemeral**:
+   - Logs into Windscribe website and creates an ephemeral port
+   - Updates qBittorrent's listen port via API
+   - Sends the port to Gluetun's control server so the VPN tunnel forwards it
+
+### Network Diagram
+
+```
+Internet <--> Gluetun (VPN) <--> qBittorrent
+                |
+                +--> ws-ephemeral (updates port via HTTP API)
+```
+
+> [!NOTE]
+> The docker-compose.yaml uses `network_mode: service:gluetun` for qBittorrent, meaning it shares Gluetun's network namespace and all traffic is routed through the VPN tunnel.
 
 ## Unraid Setup
 

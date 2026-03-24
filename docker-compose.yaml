@@ -9,30 +9,77 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun
     environment:
+      # Windscribe VPN credentials
       - VPN_SERVICE_PROVIDER=windscribe
       - VPN_TYPE=openvpn
-      - OPENVPN_USER=${OPENVPN_USER}
-      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
-      - SERVER_CITIES=${SERVER_CITIES:-Frankfurt}
-      - FIREWALL_VPN_INPUT_PORTS=${VPN_TORRENT_PORT:-10412}
-      - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE={"auth":"none"}
+      - OPENVPN_USER=${WS_USERNAME} # Your Windscribe username
+      - OPENVPN_PASSWORD=${WS_PASSWORD} # Your Windscribe password
+      - SERVER_CITIES=${SERVER_CITIES} # Server city for VPN
+      - FIREWALL_VPN_INPUT_PORTS=${TORRENTING_PORT:-10412} # Port for torrent traffic
+      - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE="{\"auth\":\"apikey\",\"apikey\":\"${GLUETUN_API_KEY}\"}" # Gluetun API key
       - DOT=off
     ports:
-      - "8000:8000/tcp"
+      - "8000:8000/tcp" # Gluetun control server port
+    volumes:
+      - gluetun_data:/gluetun
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    # Runs inside gluetun network stack (all traffic goes through VPN)
+    network_mode: service:gluetun
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Budapest
+      - WEBUI_PORT=8080 # qBittorrent web UI port
+      - TORRENTING_PORT=${TORRENTING_PORT:-10412} # Port for incoming torrent connections
+    volumes:
+      - qbittorrent_config:/config
+      - /mnt/downloads:/downloads
+    depends_on:
+      - gluetun
     restart: unless-stopped
 
   ws-ephemeral:
     container_name: ws-ephemeral
-    image: dhruvinsh/ws-ephemeral:latest
-    env_file: .env.example
+    image: ghcr.io/jelliedpizza/ws-ephemeral:latest
     environment:
-      - GLUETUN_HOST=gluetun
-      - GLUETUN_PORT=8000
-      - GLUETUN_AUTH_TYPE=none
-      # For basic auth: GLUETUN_AUTH_TYPE=basic, GLUETUN_USERNAME=x, GLUETUN_PASSWORD=x
-      # For api key: GLUETUN_AUTH_TYPE=apikey, GLUETUN_API_KEY=x
+      # === Windscribe credentials ===
+      - WS_USERNAME=${WS_USERNAME} # Your Windscribe username
+      - WS_PASSWORD=${WS_PASSWORD} # Your Windscribe password
+      - WS_TOTP=${WS_TOTP} # Your TOTP code (if using 2FA)
+      - WS_DEBUG=False
+
+      # === qBittorrent settings ===
+      # qBittorrent is at http://localhost:8080 (via gluetun network)
+      - QBIT_HOST=http://localhost
+      - QBIT_PORT=8080
+      - QBIT_USERNAME=${QBIT_USERNAME} # qBittorrent web UI username
+      - QBIT_PASSWORD=${QBIT_PASSWORD} # qBittorrent web UI password
+      - QBIT_PRIVATE_TRACKER=true # Disable DHT/PeX/LSD for private trackers
+
+      # === Gluetun settings ===
+      - GLUETUN_HOST=gluetun # Gluetun container hostname
+      - GLUETUN_PORT=8000 # Gluetun control server port
+      - GLUETUN_AUTH_TYPE=apikey # Auth type: none, basic, or apikey
+      - GLUETUN_API_KEY=${GLUETUN_API_KEY} # API key for Gluetun control server
+
+      # === Schedule settings ===
+      - DAYS=6 # Run every N days
+      - TIME=02:00 # Time of day to run (HH:MM)
+      - ONESHOT=false # Set to true to run once and exit
+      - REQUEST_TIMEOUT=10 # HTTP request timeout in seconds
     volumes:
-      - /home/user/appdata:/cookie
+      - ws_ephemeral_data:/cookie
     depends_on:
       - gluetun
+      - qbittorrent
     restart: unless-stopped
+
+# Named volumes for persistent data
+volumes:
+  gluetun_data:
+  qbittorrent_config:
+  ws_ephemeral_data:
