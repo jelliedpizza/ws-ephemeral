@@ -84,11 +84,36 @@ docker compose up -d
 | QBIT_HOST            | QBIT web address like, https://qbit.xyz.com or http://192.168.1.10               |
 | QBIT_PORT            | QBIT web port number like, 443 or 8080                                           |
 | QBIT_PRIVATE_TRACKER | get QBIT ready for private tracker by disabling dht, pex and lsd (true or false) |
+| GLUETUN_HOST         | Gluetun control server hostname (default: localhost)                           |
+| GLUETUN_PORT         | Gluetun control server port (default: 8000)                                     |
+| GLUETUN_AUTH_TYPE    | Gluetun auth type: "none", "basic", or "apikey" (default: none)               |
+| GLUETUN_USERNAME     | Gluetun username for basic auth                                                |
+| GLUETUN_PASSWORD     | Gluetun password for basic auth                                                |
+| GLUETUN_API_KEY      | Gluetun API key for apikey auth                                               |
 | ONESHOT              | Run and setup the code only one time so that job can be schedule externally      |
 | REQUEST_TIMEOUT      | configurable http api timeout for slow network/busy websites                     |
 
 > [!tip]
 > NOTE: for usage see [Docker Setup](#docker-setup) v2 setup guide.
+
+## Gluetun Setup
+
+When running qBittorrent behind Gluetun VPN container, you need to configure Gluetun's control server and pass the port to it.
+
+### Generate API Key (Optional)
+
+To generate an API key for Gluetun authentication:
+
+```bash
+docker run --rm qmcgaw/gluetun genkey
+```
+
+### Gluetun Environment Variables
+
+Add these to your Gluetun container:
+
+- `HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE={"auth":"apikey","apikey":"YOUR_API_KEY"}` - Use API key auth
+- Or `HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE={"auth":"none"}` - No authentication (not recommended for production)
 
 ## Unraid Setup
 
@@ -113,7 +138,7 @@ or concerns, please open an issue here.
   - [ ] Random job time for cron job #15
 - [ ] Allow to run custom script (for now Bash script only) #12
 - [ ] Support for deluge
-- [ ] Gluetun support [#2392](https://github.com/qdm12/gluetun/pull/2392)
+- [x] Gluetun support [#2392](https://github.com/qdm12/gluetun/pull/2392)
 
 ## License
 

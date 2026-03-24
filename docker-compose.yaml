@@ -1,10 +1,38 @@
 version: "3.8"
 
 services:
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - VPN_SERVICE_PROVIDER=windscribe
+      - VPN_TYPE=openvpn
+      - OPENVPN_USER=${OPENVPN_USER}
+      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
+      - SERVER_CITIES=${SERVER_CITIES:-Frankfurt}
+      - FIREWALL_VPN_INPUT_PORTS=${VPN_TORRENT_PORT:-10412}
+      - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE={"auth":"none"}
+      - DOT=off
+    ports:
+      - "8000:8000/tcp"
+    restart: unless-stopped
+
   ws-ephemeral:
     container_name: ws-ephemeral
     image: dhruvinsh/ws-ephemeral:latest
     env_file: .env.example
-    restart: unless-stopped
+    environment:
+      - GLUETUN_HOST=gluetun
+      - GLUETUN_PORT=8000
+      - GLUETUN_AUTH_TYPE=none
+      # For basic auth: GLUETUN_AUTH_TYPE=basic, GLUETUN_USERNAME=x, GLUETUN_PASSWORD=x
+      # For api key: GLUETUN_AUTH_TYPE=apikey, GLUETUN_API_KEY=x
     volumes:
       - /home/user/appdata:/cookie
+    depends_on:
+      - gluetun
+    restart: unless-stopped

@@ -8,6 +8,7 @@ import time
 import schedule
 
 import config
+from lib.gluetun import GluetunManager
 from lib.qbit import QbitManager
 from logger import setup_logging
 from monitor import HEARTBEAT, monitor
@@ -64,6 +65,16 @@ def main() -> None:
 
     if config.QBIT_PRIVATE_TRACKER:
         qbit.setup_private_tracker()
+
+    gluetun = GluetunManager(
+        host=config.GLUETUN_HOST,
+        port=config.GLUETUN_PORT,
+        auth_type=config.GLUETUN_AUTH_TYPE,
+        username=config.GLUETUN_USERNAME,
+        password=config.GLUETUN_PASSWORD,
+        api_key=config.GLUETUN_API_KEY,
+    )
+    gluetun.set_port(port)
     logger.info("Port setup completed..")
 
 

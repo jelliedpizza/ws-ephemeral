@@ -65,7 +65,13 @@ _QBIT_PRIVATE_TRACKER: str = os.getenv("QBIT_PRIVATE_TRACKER", "false")
 QBIT_PRIVATE_TRACKER: bool = True if _QBIT_PRIVATE_TRACKER.lower() == "true" else False
 
 
-# wait before setting the ephemeral ports
+# Gluetun config
+GLUETUN_HOST: str = os.getenv("GLUETUN_HOST", "localhost")
+GLUETUN_PORT: int = int(os.getenv("GLUETUN_PORT", "8000"))
+GLUETUN_AUTH_TYPE: str = os.getenv("GLUETUN_AUTH_TYPE", "none")
+GLUETUN_USERNAME: str = os.getenv("GLUETUN_USERNAME", "")
+GLUETUN_PASSWORD: str = os.getenv("GLUETUN_PASSWORD", "")
+GLUETUN_API_KEY: str | None = os.getenv("GLUETUN_API_KEY", None)
 try:
     DAYS: int = int(os.getenv("DAYS", 6))
 except TypeError:
