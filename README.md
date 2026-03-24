@@ -65,6 +65,10 @@ Because `ws-ephemeral` is designed to be deployed directly on the same Docker ne
 
 ## Docker Compose Example
 
+For standard deployments, you can pull the pre-built image directly from the GitHub Container Registry. 
+
+*(Note: If you are cloning this repository to build it from source natively, use the included `docker-compose.local.yaml` file instead)*
+
 ```yaml
 version: "3.8"
 
@@ -114,8 +118,7 @@ services:
 
   ws-ephemeral:
     container_name: ws-ephemeral
-    build: .
-    image: ws-ephemeral
+    image: ghcr.io/jelliedpizza/ws-ephemeral:latest
     network_mode: service:gluetun
     environment:
       # === Windscribe session cookie ===
