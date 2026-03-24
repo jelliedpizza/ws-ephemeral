@@ -59,6 +59,27 @@ class GluetunManager:
             self.logger.error("Failed to get port from Gluetun: %s", e)
             return None
 
+    def get_vpn_status(self) -> dict | None:
+        """Get VPN connection status from Gluetun.
+
+        Returns:
+            dict with 'status' key (e.g., 'running', 'stopped'), or None if unavailable.
+        """
+        try:
+            auth = self._get_auth()
+            resp = httpx.get(
+                f"{self.base_url}/v1/vpn/status",
+                headers=self._get_headers(),
+                auth=auth,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            self.logger.debug("Gluetun VPN status: %s", data)
+            return data
+        except Exception as e:
+            self.logger.error("Failed to get VPN status from Gluetun: %s", e)
+            return None
+
     def set_port(self, port: int) -> bool:
         """Set port forwarding in Gluetun.
 

@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 # only run once
-# allows wg-ephemeral to be used as a cronjob
+# allows ws-ephemeral to be used as a cronjob
 _ONESHOT: str = os.getenv("ONESHOT", "false")
 ONESHOT: bool = True if _ONESHOT.lower() == "true" else False
 
@@ -31,19 +31,11 @@ DEL_EPHEM_URL: str = STATICIP + "deleteEphPort"
 SET_EPHEM_URL: str = STATICIP + "postEphPort"
 
 # WS config
-WS_USERNAME: str = os.getenv("WS_USERNAME", "")
-WS_PASSWORD: str = os.getenv("WS_PASSWORD", "")
-WS_TOTP: str | None = os.getenv("WS_TOTP", None)
-WS_COOKIE = Path(os.getenv("WS_COOKIE_PATH", ".")) / "cookie.pkl"
+WS_SESSION_COOKIE: str = os.getenv("WS_SESSION_COOKIE", "")
 
-if not all([WS_USERNAME, WS_PASSWORD]):
-    print("ENV: WS_USERNAME and WS_PASSWORD need to be set")
+if not WS_SESSION_COOKIE:
+    print("ENV: WS_SESSION_COOKIE not set. Set to your ws_session_auth_hash cookie value.")
     sys.exit(1)
-
-# some HTML id for the login purpose
-# TODO: expose via config file
-USERNAME_ID: str = "username"
-PASSWORD_ID: str = "password"
 
 
 # fmt: off

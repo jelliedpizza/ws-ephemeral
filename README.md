@@ -1,180 +1,172 @@
-# WS-EPHEMERAL
+# ws-ephemeral
 
-> [!WARNING]
-> Please use this tool responsibly. Excessive or inappropriate
-> usage may result in temporary suspension of your account. Due to lack of
-> time I will try to revisit sometime in future but I strongly advice to let
-> it run at default pace, that is once every week. For new user cookie generation
-> might fail at the beginning, please try again after some time once you delete
-> partially created cookie.
+Automates setting up ephemeral ports on Windscribe VPN for port forwarding. Designed for use with qBittorrent behind Gluetun VPN.
 
-> [!NOTE]
-> **Current State of the Project:** There are upstream web changes affecting this project. I am also suffering from issue and I would like implement fixes but lack of time its not possible at the moment. I plan to get back to it as soon as possible.
+## What It Does
 
-This project aims to automate setting up ephemeral port on Windscribe VPN
-service for the purpose of port forwarding. Once the setup is done it wait
-patiently for next seven days. It delete the ephemeral port setting if any and
-set the new one. Useful for some torrent application which are running behind
-Windscribe VPN and need to open the ports.
+1. **Health check** - Verifies both qBittorrent and Gluetun are accessible
+2. **Creates ephemeral port** on Windscribe - obtains a random port for inbound connections
+3. **Updates qBittorrent** - configures the torrent client's listen port to match
+4. **Notifies Gluetun** - tells the VPN container to forward the port through the tunnel
+5. **Repeats weekly** - runs on a schedule to renew the port before it expires
 
-## Docker Setup
-
-> [!important]
-> NOTE: V1 is deprecated and should not be used.
-
-### Registries
-
-There are two registries available:
-
-- dhruvinsh/ws-ephemeral
-- ghcr.io/dhruvinsh/ws-ephemeral
-
-### Tags
-
-Available tags for docker image (based on semver):
-
-| Tag    | Container Type                 |
-| ------ | ------------------------------ |
-| main   | straight from `main` branch    |
-| latest | latest stable released version |
-| x      | specific major version         |
-| x.x.x  | specific version               |
-
-### Deploy
-
-#### Cli
+## Quick Start
 
 ```bash
-docker run \
--e ONESHOT=false \
--e QBIT_HOST=http://192.168.1.10 \
--e QBIT_PASSWORD=password \
--e QBIT_PORT=8080 \
--e QBIT_PRIVATE_TRACKER=true \
--e QBIT_USERNAME=username \
--e REQUEST_TIMEOUT=10 \
--e WS_COOKIE_PATH=/cookie \
--e WS_DEBUG=False \
--e WS_PASSWORD=password \
--e WS_USERNAME=username \
--e WS_TOPT=totp_token \
--v /path/to/local/data:/cookie \
-dhruvinsh/ws-ephemeral:latest
-```
+# 1. Get your session cookie (see below)
+# 2. Copy and configure .env
+cp .env.example .env
 
-#### Docker-compose
-
-Docker compose file is provided for example, make some adjustment and run as,
-
-```bash
+# 3. Run with Docker Compose
 docker compose up -d
 ```
 
-### Environment Variables
+## Authentication
 
-| Variable             | Comment                                                                          |
-| -------------------- | -------------------------------------------------------------------------------- |
-| WS_USERNAME          | WS username                                                                      |
-| WS_PASSWORD          | WS password                                                                      |
-| WS_TOTP              | WS totp token for 2fa                                                            |
-| WS_DEBUG             | Enable Debug logging                                                             |
-| WS_COOKIE_PATH       | Persistent location for the cookie. (v3.x.x only)                                |
-| QBIT_USERNAME        | QBIT username                                                                    |
-| QBIT_PASSWORD        | QBIT password                                                                    |
-| QBIT_HOST            | QBIT web address like, https://qbit.xyz.com or http://192.168.1.10               |
-| QBIT_PORT            | QBIT web port number like, 443 or 8080                                           |
-| QBIT_PRIVATE_TRACKER | get QBIT ready for private tracker by disabling dht, pex and lsd (true or false) |
-| GLUETUN_HOST         | Gluetun control server hostname (default: localhost)                           |
-| GLUETUN_PORT         | Gluetun control server port (default: 8000)                                     |
-| GLUETUN_AUTH_TYPE    | Gluetun auth type: "none", "basic", or "apikey" (default: none)               |
-| GLUETUN_USERNAME     | Gluetun username for basic auth                                                |
-| GLUETUN_PASSWORD     | Gluetun password for basic auth                                                |
-| GLUETUN_API_KEY      | Gluetun API key for apikey auth                                               |
-| ONESHOT              | Run and setup the code only one time so that job can be schedule externally      |
-| REQUEST_TIMEOUT      | configurable http api timeout for slow network/busy websites                     |
+Windscribe uses Cloudflare protection which blocks automated login. Use a session cookie instead:
 
-> [!tip]
-> NOTE: for usage see [Docker Setup](#docker-setup) v2 setup guide.
-
-## Gluetun Setup
-
-When running qBittorrent behind Gluetun VPN container, you need to configure Gluetun's control server and pass the port to it.
-
-### Generate API Key
-
-To generate an API key for Gluetun authentication:
+1. Log into [windscribe.com](https://windscribe.com) in your browser
+2. Install a cookie export extension (e.g., EditThisCookie, Cookie-Editor)
+3. Find the `ws_session_auth_hash` cookie
+4. Copy its value and set as `WS_SESSION_COOKIE` environment variable
 
 ```bash
-docker run --rm qmcgaw/gluetun genkey
+WS_SESSION_COOKIE=1194783%3A1%3A1774370088%3A...
 ```
 
-### Full Stack Setup (Recommended)
+## Environment Variables
 
-The project includes a complete docker-compose.yaml that runs Gluetun + qBittorrent + ws-ephemeral together:
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `WS_SESSION_COOKIE` | Your `ws_session_auth_hash` cookie from browser | - |
+| `OPENVPN_USER` | Windscribe VPN username (for Gluetun) | - |
+| `OPENVPN_PASSWORD` | Windscribe VPN password (for Gluetun) | - |
+| `SERVER_CITIES` | VPN server location (e.g., Brussels) | - |
+| `QBIT_HOST` | qBittorrent web UI address | 127.0.0.1 |
+| `QBIT_PORT` | qBittorrent web UI port | 8080 |
+| `QBIT_USERNAME` | qBittorrent web UI username | - |
+| `QBIT_PASSWORD` | qBittorrent web UI password | - |
+| `QBIT_PRIVATE_TRACKER` | Disable DHT/PeX/LSD (true/false) | false |
+| `GLUETUN_HOST` | Gluetun control server hostname | localhost |
+| `GLUETUN_PORT` | Gluetun control server port | 8000 |
+| `GLUETUN_AUTH_TYPE` | Auth type: none, basic, or apikey | No |
+| `GLUETUN_API_KEY` | Gluetun API key | No |
+| `DAYS` | Days between port renewal (default: 6) | No |
+| `TIME` | Time of day to run (default: 02:00) | No |
+| `ONESHOT` | Run once and exit (true/false) | No |
+| `WS_DEBUG` | Enable debug logging (true/false) | No |
+| `REQUEST_TIMEOUT` | HTTP timeout in seconds (default: 5) | No |
+
+## Docker Compose Example
+
+```yaml
+version: "3.8"
+
+services:
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - VPN_SERVICE_PROVIDER=windscribe
+      - VPN_TYPE=openvpn
+      - OPENVPN_USER=${OPENVPN_USER}
+      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
+      - SERVER_CITIES=${SERVER_CITIES}
+      - FIREWALL_VPN_INPUT_PORTS=10412
+      - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE={"auth":"apikey","apikey":"${GLUETUN_API_KEY}"}
+    ports:
+      - "8000:8000"
+    volumes:
+      - gluetun_data:/gluetun
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    network_mode: service:gluetun
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+      - WEBUI_PORT=8080
+      - TORRENTING_PORT=10412
+    volumes:
+      - qbittorrent_config:/config
+      - /path/to/downloads:/downloads
+    depends_on:
+      - gluetun
+    restart: unless-stopped
+
+  ws-ephemeral:
+    image: ws-ephemeral
+    environment:
+      - WS_SESSION_COOKIE=${WS_SESSION_COOKIE}
+      - QBIT_HOST=localhost
+      - QBIT_PORT=8080
+      - QBIT_USERNAME=${QBIT_USERNAME}
+      - QBIT_PASSWORD=${QBIT_PASSWORD}
+      - QBIT_PRIVATE_TRACKER=true
+      - GLUETUN_HOST=gluetun
+      - GLUETUN_PORT=8000
+      - GLUETUN_AUTH_TYPE=apikey
+      - GLUETUN_API_KEY=${GLUETUN_API_KEY}
+      - DAYS=6
+      - TIME=02:00
+    depends_on:
+      - gluetun
+      - qbittorrent
+    restart: unless-stopped
+
+volumes:
+  gluetun_data:
+  qbittorrent_config:
+```
+
+## How It Works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Docker Network                          │
+│                                                             │
+│   ┌─────────────┐      ┌──────────────┐                     │
+│   │  qBittorrent│ ───► │    Gluetun   │ ───► Internet      │
+│   │   (port     │      │  (VPN tunnel)│                     │
+│   │   10412)    │      │   (port      │                     │
+│   └─────────────┘      │   forward)   │                     │
+│        ▲              └──────────────┘                     │
+│        │                     ▲                             │
+│        │                     │                             │
+│   ┌────┴────┐           ┌────┴────┐                       │
+│   │ ws-     │           │ Control  │                       │
+│   │ ephemeral│           │  API     │                       │
+│   └─────────┘           └──────────┘                       │
+└─────────────────────────────────────────────────────────────┘
+
+1. ws-ephemeral connects to Windscribe API using session cookie
+2. Creates ephemeral port (e.g., 10291)
+3. Updates qBittorrent's listen port to match
+4. Notifies Gluetun to forward the port through VPN tunnel
+```
+
+## Running Locally (Without Docker)
 
 ```bash
-# 1. Create .env file with your credentials
-WS_USERNAME=your_windscribe_email
-WS_PASSWORD=your_windscribe_password
-WS_TOTP=your_totp_code  # optional
-QBIT_USERNAME=your_qbit_username
-QBIT_PASSWORD=your_qbit_password
-GLUETUN_API_KEY=your_generated_api_key
-SERVER_CITIES=Brussels
-TORRENTING_PORT=10412  # optional, defaults to 10412
+# Install dependencies
+pip install -r requirements.txt
 
-# 2. Start the stack
-docker compose up -d
+# Configure
+cp .env.example .env
+# Edit .env with your credentials
 
-# 3. Check logs
-docker logs -f ws-ephemeral
+# Run once
+python -m src.run
+
+# Or run as daemon (default: every 6 days at 02:00)
+python -m src.run
 ```
-
-### How It Works
-
-1. **Gluetun** connects to Windscribe VPN and exposes a control server on port 8000
-2. **qBittorrent** runs inside Gluetun's network stack (all traffic goes through VPN)
-3. **ws-ephemeral**:
-   - Logs into Windscribe website and creates an ephemeral port
-   - Updates qBittorrent's listen port via API
-   - Sends the port to Gluetun's control server so the VPN tunnel forwards it
-
-### Network Diagram
-
-```
-Internet <--> Gluetun (VPN) <--> qBittorrent
-                |
-                +--> ws-ephemeral (updates port via HTTP API)
-```
-
-> [!NOTE]
-> The docker-compose.yaml uses `network_mode: service:gluetun` for qBittorrent, meaning it shares Gluetun's network namespace and all traffic is routed through the VPN tunnel.
-
-## Unraid Setup
-
-Unraid template is now available under community application.
-
-## Changelog
-
-Located [here](./CHANGELOG.md)
-
-## Privacy
-
-I assure you that nothing is being collected or logged. Your credentials are
-safe and set via environment variable only. Still If you have further questions
-or concerns, please open an issue here.
-
-## Roadmap
-
-- [x] Support 2FA, #19
-- [ ] Daemon mode and job mode
-  - [ ] Rest API (useful for cron/script job)
-  - [ ] Separate port renewal, qbittorrent update and private tracker logic
-  - [ ] Random job time for cron job #15
-- [ ] Allow to run custom script (for now Bash script only) #12
-- [ ] Support for deluge
-- [x] Gluetun support [#2392](https://github.com/qdm12/gluetun/pull/2392)
 
 ## License
 
-[GPL3](LICENSE.md)
+GPL-3.0 - See [LICENSE.md](LICENSE.md)

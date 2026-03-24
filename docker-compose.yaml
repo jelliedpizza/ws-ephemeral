@@ -9,19 +9,21 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun
     environment:
-      # Windscribe VPN credentials
+      # Windscribe VPN credentials (for OpenVPN connection)
+      # These are DIFFERENT from the website credentials used for cookies
       - VPN_SERVICE_PROVIDER=windscribe
       - VPN_TYPE=openvpn
-      - OPENVPN_USER=${WS_USERNAME} # Your Windscribe username
-      - OPENVPN_PASSWORD=${WS_PASSWORD} # Your Windscribe password
+      - OPENVPN_USER=${OPENVPN_USER}
+      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
       - SERVER_CITIES=${SERVER_CITIES} # Server city for VPN
       - FIREWALL_VPN_INPUT_PORTS=${TORRENTING_PORT:-10412} # Port for torrent traffic
-      - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE="{\"auth\":\"apikey\",\"apikey\":\"${GLUETUN_API_KEY}\"}" # Gluetun API key
+      - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE={"auth":"none"}
       - DOT=off
     ports:
-      - "8000:8000/tcp" # Gluetun control server port
+      - "8080:8080" # Expose qbit
     volumes:
       - gluetun_data:/gluetun
+      - ./gluetun/auth:/gluetun/auth
     restart: unless-stopped
 
   qbittorrent:
@@ -44,35 +46,30 @@ services:
 
   ws-ephemeral:
     container_name: ws-ephemeral
-    image: ghcr.io/jelliedpizza/ws-ephemeral:latest
+    image: ws-ephemeral
+    network_mode: service:gluetun
     environment:
-      # === Windscribe credentials ===
-      - WS_USERNAME=${WS_USERNAME} # Your Windscribe username
-      - WS_PASSWORD=${WS_PASSWORD} # Your Windscribe password
-      - WS_TOTP=${WS_TOTP} # Your TOTP code (if using 2FA)
+      # === Windscribe session cookie ===
+      - WS_SESSION_COOKIE=${WS_SESSION_COOKIE}
       - WS_DEBUG=False
 
       # === qBittorrent settings ===
-      # qBittorrent is at http://localhost:8080 (via gluetun network)
-      - QBIT_HOST=http://localhost
+      - QBIT_HOST=localhost
       - QBIT_PORT=8080
       - QBIT_USERNAME=${QBIT_USERNAME} # qBittorrent web UI username
       - QBIT_PASSWORD=${QBIT_PASSWORD} # qBittorrent web UI password
       - QBIT_PRIVATE_TRACKER=true # Disable DHT/PeX/LSD for private trackers
 
       # === Gluetun settings ===
-      - GLUETUN_HOST=gluetun # Gluetun container hostname
+      - GLUETUN_HOST=localhost # Gluetun container hostname
       - GLUETUN_PORT=8000 # Gluetun control server port
-      - GLUETUN_AUTH_TYPE=apikey # Auth type: none, basic, or apikey
-      - GLUETUN_API_KEY=${GLUETUN_API_KEY} # API key for Gluetun control server
+      - GLUETUN_AUTH_TYPE=none # Auth type: none, basic, or apikey
 
       # === Schedule settings ===
       - DAYS=6 # Run every N days
       - TIME=02:00 # Time of day to run (HH:MM)
       - ONESHOT=false # Set to true to run once and exit
       - REQUEST_TIMEOUT=10 # HTTP request timeout in seconds
-    volumes:
-      - ws_ephemeral_data:/cookie
     depends_on:
       - gluetun
       - qbittorrent
@@ -82,4 +79,3 @@ services:
 volumes:
   gluetun_data:
   qbittorrent_config:
-  ws_ephemeral_data:
