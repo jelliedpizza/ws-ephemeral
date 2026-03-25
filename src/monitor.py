@@ -32,11 +32,19 @@ async def check_gluetun(config: Config) -> bool:
     try:
         async with GluetunManager(config) as gluetun:
             status = await gluetun.get_vpn_status()
-            if status and status.get("status") == "running":
-                logging.debug("Gluetun heartbeat: OK (VPN running)")
-                return True
-            logging.warning("Gluetun health check: VPN not connected")
-            return False
+            if not status or status.get("status") != "running":
+                logging.warning("Gluetun health check: VPN not connected")
+                return False
+                
+            try:
+                # Issue a GET to verify the port forwarding service has completed initialization
+                await gluetun.get_port()
+            except Exception as e:
+                logging.warning(f"Gluetun health check: Port forwarding service not ready ({e})")
+                return False
+
+            logging.debug("Gluetun heartbeat: OK (VPN and Port Forwarding ready)")
+            return True
     except Exception as e:
         logging.error(f"Gluetun health check failed: {e}")
         return False
