@@ -4,6 +4,7 @@ Module that runs the setup for Windscribe's ephemeral port
 
 import asyncio
 import logging
+import time
 
 import schedule
 
@@ -20,11 +21,17 @@ logger = logging.getLogger("main")
 
 async def run_automation(config: Config) -> None:
     """Main function responsible for setting up ws, qbit, and gluetun."""
-    logger.info("Running health check...")
-
-    if not await monitor(config):
-        logger.warning("Health check failed, skipping ephemeral renewal")
-        return
+    while True:
+        logger.info("Running health check...")
+        if await monitor(config):
+            break
+            
+        if config.oneshot:
+            logger.warning("Health check failed in ONESHOT mode. Exiting.")
+            return
+            
+        logger.warning("Health check failed, retrying in 1 minute...")
+        await asyncio.sleep(60)
 
     logger.info("Health check passed, running main automation...")
 
@@ -70,27 +77,27 @@ def run_sync_automation(config: Config) -> None:
         logger.error(f"Scheduled automation run failed: {e}")
 
 
-async def main() -> None:
+def main() -> None:
     config = load_config()
 
     if config.oneshot:
         logger.info("ONESHOT mode: running once")
-        await run_automation(config)
+        run_sync_automation(config)
         return
 
     logger.info("Running initial boot execution...")
-    await run_automation(config)
+    run_sync_automation(config)
 
     logger.info(f"Scheduling target run every {config.days} days at {config.time}")
     schedule.every(config.days).days.at(config.time).do(run_sync_automation, config=config)
 
     while True:
         schedule.run_pending()
-        await asyncio.sleep(1)
+        time.sleep(1)
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        main()
     except KeyboardInterrupt:
         logger.info("Shutting down ws-ephemeral...")
