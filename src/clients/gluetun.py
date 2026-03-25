@@ -75,5 +75,12 @@ class GluetunManager:
         """Set the Gluetun port forward."""
         await self._request("PUT", "/portforward", json_data={"port": port})
         current_port = await self.get_port()
-        self.logger.info(f"Verified Gluetun forwarded port: {current_port}")
-        return current_port == port
+        if current_port == port:
+            self.logger.info(f"Verified Gluetun forwarded port: {current_port}")
+            return True
+        elif current_port == 0:
+            self.logger.warning(f"Gluetun reported port 0 instead of {port} (ignoring due to known issue #3178)")
+            return True
+        
+        self.logger.error(f"Gluetun reported port {current_port}, expected {port}")
+        return False
