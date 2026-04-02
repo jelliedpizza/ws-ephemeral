@@ -54,15 +54,11 @@ class GluetunManager:
             raise
 
     async def get_vpn_status(self) -> dict | None:
-        """Get the openvpn VPN connection status."""
+        """Get the current VPN connection status."""
         try:
-            return await self._request("GET", "/openvpn/status")
+            return await self._request("GET", "/vpn/status")
         except httpx.HTTPError:
-            self.logger.warning("Falling back to Wireguard status probe.")
-            try:
-                return await self._request("GET", "/wireguard/status")
-            except httpx.HTTPError:
-                return None
+            return None
 
     async def get_port(self) -> int:
         """Get the current forwarded port from Gluetun."""
